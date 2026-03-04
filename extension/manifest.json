@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "LinkSnap — 一键保存链接",
+  "version": "1.0.0",
+  "description": "一键保存当前页面，自动生成 AI 摘要，再也不怕收藏夹积灰",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "LinkSnap — 保存此页面"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
