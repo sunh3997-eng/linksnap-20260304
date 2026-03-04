@@ -174,9 +174,21 @@ searchInput.addEventListener("input", () => {
   }, 200);
 });
 
-// ─── OpenAI summarize ─────────────────────────────────────────────────────────
+// ─── Multi-provider summarize ─────────────────────────────────────────────────
 
-async function summarizeWithOpenAI(apiKey, model, content, title) {
+/**
+ * Summarize page content using the configured AI provider.
+ * Supports: openai, anthropic, openrouter, groq, ollama, custom.
+ */
+async function summarize(settings, content, title) {
+  const {
+    provider = "openai",
+    apiKey,
+    model,
+    customEndpoint,
+    ollamaModel,
+  } = settings;
+
   const systemPrompt =
     "You are a helpful assistant that summarizes web pages concisely in Chinese. " +
     "Return exactly 3 sentences. Be informative and objective.";
@@ -185,29 +197,99 @@ async function summarizeWithOpenAI(apiKey, model, content, title) {
     `Page title: ${title}\n\nPage content:\n${content}\n\n` +
     "Summarize this page in exactly 3 sentences in Chinese.";
 
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt },
-      ],
-      max_tokens:  300,
-      temperature: 0.3,
-    }),
-  });
+  // ── Anthropic Messages API (different format) ────────────────────────────
+  if (provider === "anthropic") {
+    let resp;
+    try {
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type":      "application/json",
+          "x-api-key":         apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 300,
+          system:     systemPrompt,
+          messages:   [{ role: "user", content: userPrompt }],
+        }),
+      });
+    } catch (err) {
+      throw new Error(`Network error: ${err.message}`);
+    }
+
+    if (!resp.ok) {
+      const errBody = await resp.json().catch(() => ({}));
+      const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
+      if (resp.status === 401 || resp.status === 403) throw new Error("API Key 无效或无权限");
+      if (resp.status === 429) throw new Error("请求过于频繁，稍后再试");
+      throw new Error(errMsg);
+    }
+
+    const data = await resp.json();
+    return data.content?.[0]?.text?.trim() || "";
+  }
+
+  // ── OpenAI-compatible (openai / openrouter / groq / ollama / custom) ─────
+  const actualModel = (provider === "ollama")
+    ? (ollamaModel || model || "llama3.2")
+    : (model || "gpt-4o-mini");
+
+  let endpoint;
+  const headers = { "Content-Type": "application/json" };
+
+  switch (provider) {
+    case "openai":
+      endpoint         = "https://api.openai.com/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${apiKey}`;
+      break;
+    case "openrouter":
+      endpoint         = "https://openrouter.ai/api/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${apiKey}`;
+      headers["HTTP-Referer"]  = "https://linksnap.ext";
+      headers["X-Title"]       = "LinkSnap";
+      break;
+    case "groq":
+      endpoint         = "https://api.groq.com/openai/v1/chat/completions";
+      headers["Authorization"] = `Bearer ${apiKey}`;
+      break;
+    case "ollama":
+      endpoint         = "http://localhost:11434/v1/chat/completions";
+      headers["Authorization"] = "Bearer ollama";
+      break;
+    default: // custom
+      endpoint         = (customEndpoint || "http://localhost:8080/v1").replace(/\/$/, "") + "/chat/completions";
+      headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model:       actualModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: userPrompt },
+        ],
+        max_tokens:  300,
+        temperature: 0.3,
+      }),
+    });
+  } catch (err) {
+    if (provider === "ollama") {
+      throw new Error("Ollama 未运行，请先启动 ollama serve");
+    }
+    throw new Error(`Network error: ${err.message}`);
+  }
 
   if (!resp.ok) {
     const errBody = await resp.json().catch(() => ({}));
     const errMsg  = errBody?.error?.message || `HTTP ${resp.status}`;
-
-    if (resp.status === 401) throw new Error("Invalid API key — check Settings.");
-    if (resp.status === 429) throw new Error("Rate limited or quota exceeded — try again later.");
+    if (resp.status === 401 || resp.status === 403) throw new Error("API Key 无效或无权限");
+    if (resp.status === 429) throw new Error("请求过于频繁，稍后再试");
     if (resp.status === 400) throw new Error(`Bad request: ${errMsg}`);
     throw new Error(errMsg);
   }
@@ -224,11 +306,20 @@ async function saveCurrentPage() {
     return;
   }
 
-  const { apiKey, model = "gpt-4o-mini" } = await chrome.storage.local.get(["apiKey", "model"]);
-  if (!apiKey) {
+  const settings = await chrome.storage.local.get([
+    "provider", "apiKey", "model", "customEndpoint", "ollamaModel",
+  ]);
+  const { provider = "openai", apiKey, model = "gpt-4o-mini", ollamaModel } = settings;
+
+  if (provider !== "ollama" && !apiKey) {
     showSaveStatus("error", "No API key — open Settings first.");
     return;
   }
+
+  // Compute the model name that will actually be used
+  const actualModel = (provider === "ollama")
+    ? (ollamaModel || model || "llama3.2")
+    : (model || "gpt-4o-mini");
 
   saveBtn.disabled        = true;
   saveBtnIcon.textContent = "";
@@ -236,9 +327,9 @@ async function saveCurrentPage() {
   btnSpinner.className = "spinner";
   btnSpinner.style.cssText = "border-color:rgba(255,255,255,.3);border-top-color:#fff;";
   saveBtnIcon.appendChild(btnSpinner);
-  saveBtnLabel.textContent = "Saving…";
+  saveBtnLabel.textContent = "Saving\u2026";
 
-  showSaveStatus("loading", "Extracting page content…", true);
+  showSaveStatus("loading", "Extracting page content\u2026", true);
 
   try {
     // 1. Get page text via content script message
@@ -259,12 +350,11 @@ async function saveCurrentPage() {
       }
     }
 
-    showSaveStatus("loading", `Generating summary with ${model}…`, true);
+    showSaveStatus("loading", `Generating summary with ${actualModel}\u2026`, true);
 
-    // 2. Call OpenAI
-    const summary = await summarizeWithOpenAI(
-      apiKey,
-      model,
+    // 2. Call AI provider
+    const summary = await summarize(
+      settings,
       pageContent.slice(0, 5000),
       currentTab.title || currentTab.url
     );
@@ -276,7 +366,7 @@ async function saveCurrentPage() {
       summary,
       content_preview: pageContent.slice(0, 300),
       tags:            [],
-      model,
+      model:           actualModel,
     });
 
     // 4. Refresh list & stats
@@ -292,8 +382,8 @@ async function saveCurrentPage() {
     console.error("LinkSnap save error:", err);
     showSaveStatus("error", err.message || "Unexpected error.");
   } finally {
-    saveBtn.disabled        = false;
-    saveBtnIcon.innerHTML   = "⚡";
+    saveBtn.disabled         = false;
+    saveBtnIcon.innerHTML    = "&#x26A1;";
     saveBtnLabel.textContent = "Save & Generate Summary";
   }
 }
@@ -314,9 +404,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     pageFavicon.style.display = "none";
   }
 
-  // Show banner if no API key configured
-  const { apiKey } = await chrome.storage.local.get("apiKey");
-  if (!apiKey) {
+  // Show banner if no API key configured (Ollama does not need one)
+  const { provider = "openai", apiKey } = await chrome.storage.local.get(["provider", "apiKey"]);
+  if (provider !== "ollama" && !apiKey) {
     noKeyBanner.classList.add("visible");
     saveBtn.disabled = true;
   }

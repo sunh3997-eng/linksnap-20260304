@@ -94,6 +94,19 @@
     color: var(--muted);
     line-height: 1.5;
   }
+  .hint a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .hint a:hover { text-decoration: underline; }
+  .hint code {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 10px;
+  }
 
   .input-wrap {
     position: relative;
@@ -145,6 +158,7 @@
     cursor: pointer;
   }
   select option { background: var(--surface2); }
+  select optgroup { background: var(--surface2); color: var(--muted); font-size: 11px; }
 
   /* ── Buttons ── */
   .btn-row {
@@ -224,25 +238,65 @@
   </div>
 
   <div class="card">
-    <div class="card-title">OpenAI Configuration</div>
+    <div class="card-title">AI Provider Configuration</div>
 
+    <!-- Provider selection -->
     <div class="field">
+      <label for="provider-select">Provider</label>
+      <select id="provider-select">
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openrouter">OpenRouter — 200+ models</option>
+        <option value="groq">Groq — Free &amp; Fast</option>
+        <option value="ollama">Ollama — Local</option>
+        <option value="custom">Custom Endpoint</option>
+      </select>
+    </div>
+
+    <!-- API Key (hidden for Ollama) -->
+    <div class="field" id="api-key-field">
       <label for="api-key">API Key</label>
       <div class="input-wrap">
         <input type="password" id="api-key" placeholder="sk-..." autocomplete="off" spellcheck="false">
         <button class="eye-btn" id="eye-btn" title="Toggle visibility" type="button">👁</button>
       </div>
-      <span class="hint">Get yours at platform.openai.com → API keys. Stored only in your browser's local storage.</span>
+      <span class="hint" id="api-key-hint">
+        Get yours at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a>.
+        Stored only in your browser's local storage.
+      </span>
     </div>
 
-    <div class="field">
+    <!-- Custom endpoint URL (Custom provider only) -->
+    <div class="field" id="custom-endpoint-field" style="display:none">
+      <label for="custom-endpoint">Endpoint URL</label>
+      <input type="text" id="custom-endpoint" placeholder="http://localhost:8080/v1" autocomplete="off" spellcheck="false">
+      <span class="hint">OpenAI-compatible base URL. Do not include <code>/chat/completions</code>.</span>
+    </div>
+
+    <!-- Model select (all providers except Custom) -->
+    <div class="field" id="model-field">
       <label for="model-select">Model</label>
       <select id="model-select">
-        <option value="gpt-4o-mini">gpt-4o-mini — Fast &amp; cheap (recommended)</option>
-        <option value="gpt-4o">gpt-4o — Smarter summaries</option>
-        <option value="gpt-3.5-turbo">gpt-3.5-turbo — Legacy</option>
+        <!-- Populated dynamically by options.js -->
       </select>
-      <span class="hint">gpt-4o-mini is the best balance of quality and cost for summarization.</span>
+      <span class="hint" id="model-hint">gpt-4o-mini offers the best balance of quality and cost.</span>
+    </div>
+
+    <!-- Ollama custom model override (Ollama only) -->
+    <div class="field" id="ollama-model-field" style="display:none">
+      <label for="ollama-model">
+        Custom Model Name
+        <span style="color:var(--muted);font-weight:400;margin-left:4px">(optional override)</span>
+      </label>
+      <input type="text" id="ollama-model" placeholder="e.g. codellama, llama3.2:70b" autocomplete="off" spellcheck="false">
+      <span class="hint">Overrides the dropdown above. Useful for custom tags or unlisted models.</span>
+    </div>
+
+    <!-- Custom model name text input (Custom provider only) -->
+    <div class="field" id="custom-model-field" style="display:none">
+      <label for="custom-model">Model Name</label>
+      <input type="text" id="custom-model" placeholder="e.g. gpt-4o, llama-3, mistral" autocomplete="off" spellcheck="false">
+      <span class="hint">The model name sent in the API request body.</span>
     </div>
 
     <div class="status" id="status-box">
@@ -251,14 +305,14 @@
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-secondary" id="test-btn" type="button">Test API Key</button>
+      <button class="btn btn-secondary" id="test-btn" type="button">Test Connection</button>
       <button class="btn btn-primary"   id="save-btn" type="button">Save Settings</button>
     </div>
   </div>
 
   <div class="privacy-note">
     <strong>Privacy:</strong> Your API key and all saved links stay <strong>100% local</strong> in your browser.
-    Nothing is sent to any LinkSnap server. API calls go directly from your browser to OpenAI.
+    Nothing is sent to any LinkSnap server. API calls go directly from your browser to the chosen provider.
   </div>
 
 </div>

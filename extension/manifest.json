@@ -6,6 +6,10 @@
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": [
     "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://openrouter.ai/*",
+    "https://api.groq.com/*",
+    "http://localhost/*",
     "<all_urls>"
   ],
   "action": {
