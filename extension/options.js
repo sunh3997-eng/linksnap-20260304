@@ -29,6 +29,7 @@ const MODEL_CONFIGS = {
 
   anthropic: [
     { group: "Claude 4", models: [
+      { value: "claude-opus-4-6",   label: "claude-opus-4-6 — Latest & Most Capable" },
       { value: "claude-opus-4-5",   label: "claude-opus-4-5" },
       { value: "claude-sonnet-4-6", label: "claude-sonnet-4-6 — Recommended" },
       { value: "claude-haiku-3-5",  label: "claude-haiku-3-5" },
@@ -49,6 +50,7 @@ const MODEL_CONFIGS = {
       { value: "openai/gpt-4o-mini", label: "openai/gpt-4o-mini — Recommended" },
     ]},
     { group: "Anthropic", models: [
+      { value: "anthropic/claude-opus-4-6",   label: "anthropic/claude-opus-4-6 — Latest" },
       { value: "anthropic/claude-opus-4-5",   label: "anthropic/claude-opus-4-5" },
       { value: "anthropic/claude-sonnet-4-6", label: "anthropic/claude-sonnet-4-6" },
     ]},
