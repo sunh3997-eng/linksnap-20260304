@@ -1,10 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "LinkSnap — 一键保存链接",
+  "name": "LinkSnap",
   "version": "1.0.0",
-  "description": "一键保存当前页面，自动生成 AI 摘要，再也不怕收藏夹积灰",
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "description": "Save any page with an AI summary — all local, no server needed.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "<all_urls>"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -12,10 +15,26 @@
       "48":  "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "LinkSnap — 保存此页面"
+    "default_title": "LinkSnap"
   },
+  "options_page": "options.html",
   "background": {
     "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "commands": {
+    "save-link": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "Save current page with AI summary"
+    }
   },
   "icons": {
     "16":  "icons/icon16.png",
