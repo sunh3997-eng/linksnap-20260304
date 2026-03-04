@@ -303,6 +303,8 @@ async function testConnection() {
   try {
     if (provider === "anthropic") {
       // Anthropic: POST /v1/messages with a minimal test message
+      // Use the user's selected model for the test call
+      const selectedModel = modelSelect.value || "claude-3-5-haiku-20241022";
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -312,20 +314,23 @@ async function testConnection() {
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
-          model:      "claude-3-5-haiku-20241022",
+          model:      selectedModel,
           max_tokens: 1,
           messages:   [{ role: "user", content: "Hi" }],
         }),
       });
 
       if (resp.ok || resp.status === 529) {
-        showStatus("success", "Anthropic API key is valid.");
+        showStatus("success", `Anthropic key valid — ${selectedModel} is accessible.`);
       } else if (resp.status === 401 || resp.status === 403) {
         showStatus("error", "Invalid API key \u2014 authentication failed.");
+      } else if (resp.status === 404) {
+        showStatus("error", `Model "${selectedModel}" not found. Try a different model.`);
       } else if (resp.status === 429) {
         showStatus("success", "Key is valid (rate limited, but authenticated).");
       } else {
-        showStatus("error", `Unexpected response: HTTP ${resp.status}`);
+        const body = await resp.text().catch(() => "");
+        showStatus("error", `HTTP ${resp.status}: ${body.slice(0, 120)}`);
       }
 
     } else if (provider === "ollama") {
