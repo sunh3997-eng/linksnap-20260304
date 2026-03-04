@@ -309,9 +309,10 @@ async function testConnection() {
           "Content-Type":      "application/json",
           "x-api-key":         key,
           "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
-          model:      "claude-haiku-3-5",
+          model:      "claude-3-5-haiku-20241022",
           max_tokens: 1,
           messages:   [{ role: "user", content: "Hi" }],
         }),

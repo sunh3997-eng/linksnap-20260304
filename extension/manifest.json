@@ -3,7 +3,7 @@
   "name": "LinkSnap",
   "version": "1.0.0",
   "description": "Save any page with an AI summary — all local, no server needed.",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "alarms"],
   "host_permissions": [
     "https://api.openai.com/*",
     "https://api.anthropic.com/*",
